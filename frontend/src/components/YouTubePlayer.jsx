@@ -10,7 +10,7 @@ export default function YouTubePlayer({ mood }) {
     prevMood.current = mood
     setLoading(true)
 
-    fetch(`/api/music?mood=${mood}`)
+    fetch(`${import.meta.env.VITE_API_URL || ''}/api/music?mood=${mood}`)
       .then(r => r.json())
       .then(data => {
         if (data.videoId) setVideoId(data.videoId)
