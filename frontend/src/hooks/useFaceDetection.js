@@ -41,9 +41,12 @@ export function useFaceDetection(videoRef) {
     loadModels()
   }, [])
 
+  const stabilizationBuffer = useRef([])
+
   const startDetection = useCallback(() => {
     if (!modelsLoaded.current) return
     setStatus('detecting')
+    stabilizationBuffer.current = [] // Reset buffer on start
 
     intervalRef.current = setInterval(async () => {
       const video = videoRef.current
@@ -58,8 +61,28 @@ export function useFaceDetection(videoRef) {
           const expressions = result.expressions
           const top = Object.entries(expressions).sort((a, b) => b[1] - a[1])[0][0]
           const detectedMood = MOOD_MAP[top] || 'neutral'
-          setMood(detectedMood)
-          const color = MOOD_COLORS[detectedMood]
+          
+          // 3-Frame Stabilization Buffer
+          stabilizationBuffer.current.push(detectedMood)
+          if (stabilizationBuffer.current.length > 3) {
+            stabilizationBuffer.current.shift()
+          }
+
+          // Compute the mode (most frequent mood in buffer)
+          const counts = {}
+          let maxCount = 0
+          let stabilizedMood = detectedMood
+
+          for (const m of stabilizationBuffer.current) {
+            counts[m] = (counts[m] || 0) + 1
+            if (counts[m] > maxCount) {
+              maxCount = counts[m]
+              stabilizedMood = m
+            }
+          }
+
+          setMood(stabilizedMood)
+          const color = MOOD_COLORS[stabilizedMood]
           setMoodColor(color)
           document.documentElement.style.setProperty('--mood-color', color)
         }
